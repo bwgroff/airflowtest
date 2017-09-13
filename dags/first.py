@@ -1,5 +1,7 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
+from airflow.operators.email_operator import EmailOperator
+
 from datetime import datetime, timedelta
 
 from job_specific.first.tasks import sqrt_transform
@@ -19,17 +21,18 @@ default_args = {
 dag = DAG('first', default_args=default_args, schedule_interval=timedelta(seconds=5))
 
 
-raw_data = 0
-column = 0
-data_location = 0
-output_location = 0
+raw_data_table = 'fakedata'
+column = 'y'
+tmp_file = '/tmp/rooted'
+output_file = '/tmp/tpot.model'
 
 sqrt_task = PythonOperator(
     task_id='sqrt',
     python_callable=sqrt_transform,
     op_kwargs={
-        'data_location': raw_data,
-        'column': column
+        'table': raw_data_table,
+        'column': column,
+        'tmp_file': tmp_file
     },
     dag=dag)
 
@@ -37,9 +40,18 @@ tpot_task = PythonOperator(
     task_id='tpot',
     python_callable=tpot_regression,
     op_kwargs={
-        'data_location': data_location,
-        'output_location': output_location
+        'data_location': tmp_file,
+        'output_location': output_file,
+        'target': column + '_root'
     },
     dag=dag)
+
+# email_task = EmailOperator(
+#     task_id='sendtobrad',
+#     to='bradleywgroff@gmail.com',
+#     subject='yodiswrks',
+#     html_content='yay!',
+#     dag=dag
+# )
 
 sqrt_task >> tpot_task
